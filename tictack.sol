@@ -1,134 +1,205 @@
-pragma solidity 0.4.19;
+pragma solidity ^0.5.0;
 
-contract Tiktaktoe {
+contract TicTacToe {
+    uint constant public gameCost = 0.1 ether;
+    
     uint8 public boardSize = 3;
     uint8 movesCounter;
-bool gameActive
+    
+    bool gameActive;
+    
     address[3][3] board;
+    
+    address payable public player1;
+    address payable public player2;
 
-address activePlayer;
+    uint balanceToWithdrawPlayer1;
+    uint balanceToWithdrawPlayer2;
 
-event PlayerJoin(address player);
-event NextPlayer(address player);
-event GameOverWitnWin(address winner);
-event GameOverWithDraw();
-    address public player1;
-    address public player2;
+    uint timeToReact = 3 minutes;
+    uint gameValidUntil;
 
-    function TickTacToe() public {
+    address payable activePlayer;
+
+    event PlayerJoined(address player);
+    event NextPlayer(address player);
+    event GameOverWithWin(address winner);
+    event GameOverWithDraw();
+    event PayoutSuccess(address receiver, uint amountInWei);
+
+    constructor() public payable {
         player1 = msg.sender;
-  
+        require(msg.value == gameCost, "Submit some money, aborting");
+        gameValidUntil = now+timeToReact;
     }
 
+    function joinGame() public payable {
+        assert(player2 == address(0));
+        gameActive = true;
 
-    function joinGame() public  {
+        require(msg.value == gameCost);
 
-
-         assert(player2 == address(0)); //this is the way to initialise the address so that now no other address can be alloted to join the Game
-        gameActive true;
         player2 = msg.sender;
-        PlayerJoin(player2);
-        //to add randomisation as to who starts first p1 or 2
-        if(block.number % 2 == 0){
-            activePlayer = player2
+        emit PlayerJoined(player2);
+        if(block.number % 2 == 0) {
+            activePlayer = player2;
+        } else {
+            activePlayer = player1;
         }
-        else 
-        {
-            activePlayer = player2
-}   
-NextPlayer(activePlayer)
- }
 
-function getBoard(board) public view  returns(address[x][y]) {
-return board;
-}
-function setWinner(address player) private {
-    gameActive = false
-    event GameOverWitnWin(player);
+        gameValidUntil = now + timeToReact;
 
-    //emit an event
-    //transfer money to the winner
-}
-function setDraw() private {
-    gasActive = false
-    GameOverWithDraw();
-}
-
-function setStone(uint8 x,uint8 y) public {
-   require(board[x][y] = address(0)); // so that at one box if we set a value we can not change the value in that box
-   assert(gameActive);
-   assert(x < boardSize)
-    assert(y < boardSize)
-     require(msg.sender = activePlayer)
-
-    board[x][y] = msg.sender;
-    movesCounter++;
-   //row win
-   for(uint8 i = 0; i< boardSize ; i++ ){
-     if(board[i][y] != activePlayer ) {
-     break; 
-     }
-     if(i == boardSize - 1) {
-         //winner
-     setWinner(activePlayer)
-     return;
-     }
-   //win
-   } 
-   //colum-win
-    for( i = 0; i< boardSize ; i++ ){
-     if(board[x][i] != activePlayer ) {
-     break; 
-     }
-     if(i == boardSize - 1) {
-              setWinner(activePlayer)//winner
-     return ;
-     }
-   //win
-   } 
- //Diognal win
-if(x == y) {
-   //Diognal
-     for(i = 0; i< boardSize ; i++ ){
-     if(board[i][i] != activePlayer ) {
-     break; 
-     }
-     if(i == boardSize - 1) {
-             setWinner(activePlayer) //winner
-   return ;
-     }
-   //win
-   } 
-   
-
-}
-//Anti-Diognal
-if(x+y = boardSize-1){
-       for(i = 0; i< boardSize ; i++ ){
-     if(board[i][(boardSize-1)-i] != activePlayer ) {
-     break; 
-     }
-     if(i == boardSize - 1) {
-            setWinner(activePlayer)  //winner
-  return ;
-     }
-   //win
-   } 
-}
- 
- //Draw
-if(movesCounter == (boardSize**2)) {
-   setDraw() // draw
-   return;
-
-}
-
-    if(activePlayer = 1) {
-        activePlayer = player2
+        emit NextPlayer(activePlayer);
     }
-    else{
-        activePlayer = player1
-    }
-}
 
+    function getBoard() public view returns(address[3][3] memory) {
+        return board;
+    }
+
+    function setWinner(address payable player) private {
+        gameActive = false;
+        //emit an event
+        emit GameOverWithWin(player);
+        uint balanceToPayOut = address(this).balance;
+         /**
+        * In Real-World application consider removing the player.send part completely and let the player
+        * Withdraw the money later on!
+         */
+        if(player.send(balanceToPayOut) != true) {
+            if(player == player1) {
+                balanceToWithdrawPlayer1 = balanceToPayOut;
+            } else {
+                balanceToWithdrawPlayer2 = balanceToPayOut;
+            }
+        } else {
+            emit PayoutSuccess(player, balanceToPayOut);
+        }
+        //transfer money to the winner
+    }
+
+    function withdrawWin() public {
+      uint balanceToTransfer;
+        if(msg.sender == player1) {
+            require(balanceToWithdrawPlayer1 > 0);
+            balanceToTransfer = balanceToWithdrawPlayer1;
+            balanceToWithdrawPlayer1 = 0;
+            player1.transfer(balanceToTransfer);
+
+            emit PayoutSuccess(player1, balanceToTransfer);
+        } else {
+
+            require(balanceToWithdrawPlayer2 > 0);
+            balanceToTransfer = balanceToWithdrawPlayer2;
+            balanceToWithdrawPlayer2 = 0;
+            player2.transfer(balanceToTransfer);
+            emit PayoutSuccess(player2, balanceToTransfer);
+        }
+    }
+
+    function setDraw() private {
+        gameActive = false;
+        emit GameOverWithDraw();
+
+        uint balanceToPayOut = address(this).balance/2;
+
+        if(player1.send(balanceToPayOut) == false) {
+            balanceToWithdrawPlayer1 += balanceToPayOut;
+        } else {
+            emit PayoutSuccess(player1, balanceToPayOut);
+        }
+        if(player2.send(balanceToPayOut) == false) {
+            balanceToWithdrawPlayer2 += balanceToPayOut;
+        } else {
+            emit PayoutSuccess(player2, balanceToPayOut);
+        }
+
+    }
+
+    function emergecyCashout() public {
+        require(gameValidUntil < now);
+        require(gameActive);
+        setDraw();
+    }
+
+
+    function setStone(uint8 x, uint8 y) public {
+        require(board[x][y] == address(0));
+        require(gameValidUntil > now);
+        assert(gameActive);
+        assert(x < boardSize);
+        assert(y < boardSize);
+        require(msg.sender == activePlayer);
+        board[x][y] = msg.sender;
+        movesCounter++;
+        gameValidUntil = now + timeToReact;
+
+        for(uint8 i = 0; i < boardSize; i++) {
+            if(board[i][y] != activePlayer) {
+                break;
+            }
+            //win
+            if(i == boardSize - 1) {
+                //winner
+                setWinner(activePlayer);
+                return;
+            }
+        }
+        for(uint i = 0; i < boardSize; i++) {
+            if(board[x][i] != activePlayer) {
+                break;
+            }
+            //win
+
+            if(i == boardSize - 1) {
+                //winner
+                setWinner(activePlayer);
+                return;
+            }
+        }
+
+        //diagonale
+        if(x == y) {
+            for(uint i = 0; i < boardSize; i++) {
+                if(board[i][i] != activePlayer) {
+                    break;
+                }
+                //win
+                if(i == boardSize - 1) {
+                    //winner
+                    setWinner(activePlayer);
+                    return;
+                }
+            }
+        }
+
+        //anti-diagonale
+        if((x+y) == boardSize-1) {
+            for(uint i = 0; i < boardSize; i++) {
+                if(board[i][(boardSize-1)-i] != activePlayer) {
+                    break;
+                }
+                //win
+
+                if(i == boardSize - 1) {
+                    //winner
+                    setWinner(activePlayer);
+                    return;
+                }
+            }
+        }
+
+        //draw
+        if(movesCounter == (boardSize**2)) {
+            //draw
+            setDraw();
+            return;
+        }
+
+        if(activePlayer == player1) {
+            activePlayer = player2;
+        } else {
+            activePlayer = player1;
+        }
+        emit NextPlayer(activePlayer);
+    }
 }
