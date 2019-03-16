@@ -7,6 +7,11 @@ bool gameActive
     address[3][3] board;
 
 address activePlayer;
+
+event PlayerJoin(address player);
+event NextPlayer(address player);
+event GameOverWitnWin(address winner);
+event GameOverWithDraw();
     address public player1;
     address public player2;
 
@@ -22,19 +27,31 @@ address activePlayer;
          assert(player2 == address(0)); //this is the way to initialise the address so that now no other address can be alloted to join the Game
         gameActive true;
         player2 = msg.sender;
-        activePlayer = player2
-    }
+        PlayerJoin(player2);
+        //to add randomisation as to who starts first p1 or 2
+        if(block.number % 2 == 0){
+            activePlayer = player2
+        }
+        else 
+        {
+            activePlayer = player2
+}   
+NextPlayer(activePlayer)
+ }
 
 function getBoard(board) public view  returns(address[x][y]) {
 return board;
 }
 function setWinner(address player) private {
     gameActive = false
+    event GameOverWitnWin(player);
+
     //emit an event
     //transfer money to the winner
 }
 function setDraw() private {
     gasActive = false
+    GameOverWithDraw();
 }
 
 function setStone(uint8 x,uint8 y) public {
