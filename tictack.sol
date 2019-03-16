@@ -14,6 +14,8 @@ contract Tiktaktoe {
     }
     
     function joinGame() public  {
+
+         assert(player2 == address(0)); //this is the way to initialise the address so that now no other address can be alloted to join the Game
         player2 = msg.sender;
     }
 
