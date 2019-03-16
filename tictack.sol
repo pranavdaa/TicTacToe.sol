@@ -2,7 +2,8 @@ pragma solidity 0.4.19;
 
 contract Tiktaktoe {
     uint8 public boardSize = 3;
-
+    uint8 movesCounter;
+bool gameActive
     address[3][3] board;
 
 address activePlayer;
@@ -17,7 +18,9 @@ address activePlayer;
 
     function joinGame() public  {
 
+
          assert(player2 == address(0)); //this is the way to initialise the address so that now no other address can be alloted to join the Game
+        gameActive true;
         player2 = msg.sender;
         activePlayer = player2
     }
@@ -25,13 +28,24 @@ address activePlayer;
 function getBoard(board) public view  returns(address[x][y]) {
 return board;
 }
+function setWinner(address player) private {
+    gameActive = false
+    //emit an event
+    //transfer money to the winner
+}
+function setDraw() private {
+    gasActive = false
+}
+
 function setStone(uint8 x,uint8 y) public {
    require(board[x][y] = address(0)); // so that at one box if we set a value we can not change the value in that box
-    assert(x < boardSize)
+   assert(gameActive);
+   assert(x < boardSize)
     assert(y < boardSize)
      require(msg.sender = activePlayer)
 
     board[x][y] = msg.sender;
+    movesCounter++;
    //row win
    for(uint8 i = 0; i< boardSize ; i++ ){
      if(board[i][y] != activePlayer ) {
@@ -39,6 +53,8 @@ function setStone(uint8 x,uint8 y) public {
      }
      if(i == boardSize - 1) {
          //winner
+     setWinner(activePlayer)
+     return;
      }
    //win
    } 
@@ -48,7 +64,8 @@ function setStone(uint8 x,uint8 y) public {
      break; 
      }
      if(i == boardSize - 1) {
-         //winner
+              setWinner(activePlayer)//winner
+     return ;
      }
    //win
    } 
@@ -60,7 +77,8 @@ if(x == y) {
      break; 
      }
      if(i == boardSize - 1) {
-         //winner
+             setWinner(activePlayer) //winner
+   return ;
      }
    //win
    } 
@@ -74,12 +92,19 @@ if(x+y = boardSize-1){
      break; 
      }
      if(i == boardSize - 1) {
-         //winner
+            setWinner(activePlayer)  //winner
+  return ;
      }
    //win
    } 
 }
  
+ //Draw
+if(movesCounter == (boardSize**2)) {
+   setDraw() // draw
+   return;
+
+}
 
     if(activePlayer = 1) {
         activePlayer = player2
